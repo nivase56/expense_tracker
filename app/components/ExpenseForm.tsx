@@ -74,52 +74,52 @@ export default function ExpenseForm({
 
   return (
     <form onSubmit={submit} className="w-full">
-      <div className="grid grid-cols-2 gap-3 items-end">
+      <div className="grid grid-cols-2 gap-3 items-end  ">
         <div>
-          <label htmlFor="desc" className="small muted mb-1 block">Description</label>
-          <input
-            id="desc"
-            className="input highlight w-full text-sm"
-            placeholder="e.g., Lunch, Taxi"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            list="desc-suggestions"
-            aria-label="Description"
-          />
-          <datalist id="desc-suggestions">
-            {suggestions.map((s) => (
-              <option key={s} value={s} />
-            ))}
-          </datalist>
+            <label htmlFor="desc" className="small muted mb-1 block">Description</label>
+            <input
+              id="desc"
+              className="input highlight w-full text-sm"
+              placeholder="e.g., Lunch, Taxi"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              list="desc-suggestions"
+              aria-label="Description"
+            />
+            <datalist id="desc-suggestions">
+              {suggestions.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+        </div>
+
+        <div className="ml-3">
+            <label htmlFor="amount" className="small muted mb-1 block">Price</label>
+            <input
+              id="amount"
+              className="input highlight w-full text-sm text-right"
+              placeholder="0.00"
+              inputMode="decimal"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              aria-label="Amount"
+            />
         </div>
 
         <div>
-          <label htmlFor="amount" className="small muted mb-1 block">Price</label>
-          <input
-            id="amount"
-            className="input highlight w-28 text-sm text-right"
-            placeholder="0.00"
-            inputMode="decimal"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            aria-label="Amount"
-          />
+            <label className="small muted mb-1 block">Date</label>
+            <DatePicker value={date} onChange={(iso) => setDate(iso)} />
         </div>
 
-        <div>
-          <label className="small muted mb-1 block">Date</label>
-          <DatePicker value={date} onChange={(iso) => setDate(iso)} />
-        </div>
-
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            className="btn-accent small rounded-full w-10 h-10 flex items-center justify-center"
-            aria-label="Add expense"
-          >
-            +
-          </button>
-        </div>
+          <div className="col-span-1 flex items-end justify-end">
+            <button
+              type="submit"
+              className="btn-accent small rounded-full w-10 h-10 flex items-center justify-center"
+              aria-label="Add expense"
+            >
+              +
+            </button>
+          </div>
       </div>
       {error ? (
         <div role="status" aria-live="polite" className="mt-2 text-sm text-rose-500">
