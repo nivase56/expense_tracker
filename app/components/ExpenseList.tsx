@@ -3,6 +3,7 @@
 import React from "react";
 import type { Expense } from "../types";
 import EmptyState from "./EmptyState";
+import { FiTrash2 } from "react-icons/fi";
 
 const rupee = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 });
 
@@ -18,7 +19,7 @@ export default function ExpenseList({
   }
 
   return (
-    <ul className="mt-4 w-full">
+    <ul className="mt-4 w-full list-container">
       {expenses
         .slice()
         .sort((a, b) => +new Date(b.date) - +new Date(a.date))
@@ -33,10 +34,10 @@ export default function ExpenseList({
                 <div className="text-sm font-semibold">{rupee.format(e.amount)}</div>
                 <button
                   onClick={() => onDelete(e.id)}
-                  className="text-xs text-rose-500"
+                  className="p-2 rounded-full text-rose-600 hover:bg-rose-50"
                   aria-label={`Delete ${e.description}`}
                 >
-                  Delete
+                  <FiTrash2 />
                 </button>
               </div>
             </div>

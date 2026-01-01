@@ -4,6 +4,9 @@ import React, { useState, useEffect } from "react";
 import type { Expense } from "../types";
 import DatePicker from "./DatePicker";
 
+function pad(n: number) { return n < 10 ? `0${n}` : `${n}` }
+function localISO(d = new Date()) { return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}` }
+
 export default function ExpenseForm({
   onAdd,
 }: {
@@ -11,7 +14,7 @@ export default function ExpenseForm({
 }) {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => localISO());
   const [error, setError] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
 
@@ -66,7 +69,7 @@ export default function ExpenseForm({
 
     setDescription("");
     setAmount("");
-    setDate(new Date().toISOString().slice(0, 10));
+    setDate(localISO());
   }
 
   return (

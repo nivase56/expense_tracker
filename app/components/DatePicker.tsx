@@ -59,25 +59,25 @@ export default function DatePicker({ value, onChange, className }: {
   function prevMonth() { setViewDate(new Date(year, month-1, 1)); }
   function nextMonth() { setViewDate(new Date(year, month+1, 1)); }
 
-  const selected = value ? new Date(value) : null;
+  const selected = value ? new Date(value) : new Date();
 
   return (
     <div className={`relative inline-block ${className || ""}`} ref={ref}>
       <button type="button" onClick={() => setOpen((v) => !v)} className="input flex items-center justify-between w-36">
-        <span className="text-sm">{value ? value : toISODate(new Date())}</span>
+        <span className="text-sm" style={{ color: "var(--fg)" }}>{value ? value : toISODate(new Date())}</span>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M8 7h8M8 11h8M8 15h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </button>
 
       {open && (
-        <div className="absolute left-0 top-12 z-50 w-72 rounded-lg border bg-white p-3 shadow-lg">
+        <div className="absolute left-0 top-12 z-50 w-72 rounded-lg border bg-gray-500 text-black p-3 shadow-lg">
           <div className="mb-2 flex items-center justify-between">
             <button type="button" onClick={prevMonth} className="px-2 py-1 text-sm">◀</button>
             <div className="text-sm font-medium">{viewDate.toLocaleString(undefined,{month: 'long', year: 'numeric'})}</div>
             <button type="button" onClick={nextMonth} className="px-2 py-1 text-sm">▶</button>
           </div>
-          <div className="grid grid-cols-7 gap-1 text-xs text-center muted">
+          <div className="grid grid-cols-7 gap-1 text-black text-xs text-center muted">
             {['S','M','T','W','T','F','S'].map((d) => <div key={d} className="small">{d}</div>)}
           </div>
           <div className="mt-2 grid grid-cols-7 gap-1 text-sm">

@@ -75,9 +75,15 @@ export default function StatsAdvanced({ expenses }: { expenses: Expense[] }) {
     labels: ["Yesterday", "Today"],
     datasets: [
       {
-        label: "Amount",
-        backgroundColor: ["#ffd8a8", "#f59e0b"],
+        label: "Today vs Yesterday",
         data: [totals.yesterday, totals.today],
+        borderColor: "#f59e0b",
+        backgroundColor: "rgba(245,158,11,0.14)",
+        fill: true,
+        tension: 0.4,
+        pointRadius: 3,
+        pointBackgroundColor: "#f59e0b",
+        borderWidth: 2,
       },
     ],
   };
@@ -86,9 +92,15 @@ export default function StatsAdvanced({ expenses }: { expenses: Expense[] }) {
     labels: ["Prev Week", "This Week"],
     datasets: [
       {
-        label: "Amount",
-        backgroundColor: ["#fde68a", "#f59e0b"],
+        label: "Prev Week",
         data: [totals.prevWeek, totals.thisWeek],
+        borderColor: "#f97316",
+        backgroundColor: "rgba(249,115,22,0.12)",
+        fill: true,
+        tension: 0.36,
+        pointRadius: 3,
+        pointBackgroundColor: "#fb923c",
+        borderWidth: 2,
       },
     ],
   };
@@ -97,60 +109,124 @@ export default function StatsAdvanced({ expenses }: { expenses: Expense[] }) {
     labels: ["Prev Month", "This Month"],
     datasets: [
       {
-        label: "Amount",
-        backgroundColor: ["#fee2b3", "#f59e0b"],
+        label: "Prev Month",
         data: [totals.prevMonth, totals.thisMonth],
+        borderColor: "#f59e0b",
+        backgroundColor: "rgba(245,158,11,0.1)",
+        fill: true,
+        tension: 0.4,
+        pointRadius: 3,
+        pointBackgroundColor: "#f59e0b",
+        borderWidth: 2,
       },
     ],
   };
 
   const options = {
-    plugins: { legend: { display: false } },
-    scales: { y: { ticks: { callback: (value: any) => rupee.format(Number(value)) } } },
+    plugins: {
+      legend: { display: false },
+      tooltip: { mode: "index", intersect: false },
+    },
+    elements: {
+      line: { borderCapStyle: "round" },
+      point: { hoverRadius: 6 },
+    },
+    interaction: { mode: "nearest", axis: "x", intersect: false },
+    scales: {
+      x: { grid: { display: false }, ticks: { display: true } },
+      y: {
+        grid: { color: "rgba(15,23,42,0.04)" },
+        ticks: { callback: (value: any) => rupee.format(Number(value)) },
+      },
+    },
+    maintainAspectRatio: false,
+    animation: { duration: 500 },
   };
+
+  const [openDay, setOpenDay] = useState(false);
+  const [openWeek, setOpenWeek] = useState(false);
+  const [openMonth, setOpenMonth] = useState(false);
 
   return (
     <div className="w-full">
-      <div className="grid grid-cols-3 gap-3 mb-3">
-        <div className="card p-3 text-center">
+      <div className="flex gap-3 mb-3">
+        <button
+          onClick={() => setOpenDay((v) => !v)}
+          className="card p-4 text-center cursor-pointer hover:shadow-md"
+          aria-expanded={openDay}
+        >
           <div className="text-sm muted">Today</div>
           <div className="mt-1 text-lg font-semibold">{rupee.format(totals.today)}</div>
           <div className={`mt-1 text-sm ${dayPct >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>{dayPct}%</div>
-        </div>
-        <div className="card p-3 text-center">
+        </button>
+
+        <button
+          onClick={() => setOpenWeek((v) => !v)}
+          className="card p-4 text-center cursor-pointer hover:shadow-md"
+          aria-expanded={openWeek}
+        >
           <div className="text-sm muted">Week</div>
           <div className="mt-1 text-lg font-semibold">{rupee.format(totals.thisWeek)}</div>
           <div className={`mt-1 text-sm ${weekPct >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>{weekPct}%</div>
-        </div>
-        <div className="card p-3 text-center">
+        </button>
+
+        <button
+          onClick={() => setOpenMonth((v) => !v)}
+          className="card p-4 text-center cursor-pointer hover:shadow-md"
+          aria-expanded={openMonth}
+        >
           <div className="text-sm muted">Month</div>
           <div className="mt-1 text-lg font-semibold">{rupee.format(totals.thisMonth)}</div>
           <div className={`mt-1 text-sm ${monthPct >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>{monthPct}%</div>
-        </div>
+        </button>
       </div>
 
       <div className="grid grid-cols-1 gap-3">
-        <CollapsiblePanel title="Day Comparison">
-          <Chart type="bar" data={barData} options={options} />
+        <CollapsiblePanel title="Day Comparison" open={openDay} onToggle={() => setOpenDay((v) => !v)}>
+          <div style={{ height: 160 }}>
+            <Chart type="line" data={barData} options={options} />
+          </div>
         </CollapsiblePanel>
-        <CollapsiblePanel title="Week Comparison">
-          <Chart type="bar" data={weekData} options={options} />
+        <CollapsiblePanel title="Week Comparison" open={openWeek} onToggle={() => setOpenWeek((v) => !v)}>
+          <div style={{ height: 180 }}>
+            <Chart type="line" data={weekData} options={options} />
+          </div>
         </CollapsiblePanel>
-        <CollapsiblePanel title="Month Comparison">
-          <Chart type="bar" data={monthData} options={options} />
+        <CollapsiblePanel title="Month Comparison" open={openMonth} onToggle={() => setOpenMonth((v) => !v)}>
+          <div style={{ height: 200 }}>
+            <Chart type="line" data={monthData} options={options} />
+          </div>
         </CollapsiblePanel>
       </div>
     </div>
   );
 }
 
-function CollapsiblePanel({ title, children }: { title: string; children: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
+function CollapsiblePanel({
+  title,
+  children,
+  open: controlledOpen,
+  onToggle,
+}: {
+  title: string;
+  children: React.ReactNode;
+  open?: boolean;
+  onToggle?: () => void;
+}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? Boolean(controlledOpen) : internalOpen;
+
+  function toggle() {
+    if (onToggle) onToggle();
+    if (!isControlled) setInternalOpen((v) => !v);
+  }
+
   return (
     <div className="card p-2">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggle}
         className="w-full flex items-center justify-between px-3 py-2"
         aria-expanded={open}
       >
