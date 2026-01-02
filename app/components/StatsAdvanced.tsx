@@ -183,17 +183,17 @@ export default function StatsAdvanced({ expenses }: { expenses: Expense[] }) {
 
       <div className="grid grid-cols-1 gap-3">
         <CollapsiblePanel title="Day Comparison" open={openDay} onToggle={() => setOpenDay((v) => !v)}>
-          <div style={{ height: 160 }}>
+          <div style={{ height: 160 }} className="animate-entrance">
             <Chart type="line" data={barData} options={options} />
           </div>
         </CollapsiblePanel>
         <CollapsiblePanel title="Week Comparison" open={openWeek} onToggle={() => setOpenWeek((v) => !v)}>
-          <div style={{ height: 180 }}>
+          <div style={{ height: 180 }} className="animate-entrance">
             <Chart type="line" data={weekData} options={options} />
           </div>
         </CollapsiblePanel>
         <CollapsiblePanel title="Month Comparison" open={openMonth} onToggle={() => setOpenMonth((v) => !v)}>
-          <div style={{ height: 200 }}>
+          <div style={{ height: 200 }} className="animate-entrance">
             <Chart type="line" data={monthData} options={options} />
           </div>
         </CollapsiblePanel>

@@ -63,7 +63,7 @@ export default function DatePicker({ value, onChange, className }: {
 
   return (
     <div className={`relative inline-block ${className || ""}`} ref={ref}>
-      <button type="button" onClick={() => setOpen((v) => !v)} className="input flex items-center justify-between w-36">
+      <button type="button" onClick={() => setOpen((v) => !v)} className="input flex items-center justify-between w-36 tap">
         <span className="text-sm" style={{ color: "var(--fg)" }}>{value ? value : toISODate(new Date())}</span>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M8 7h8M8 11h8M8 15h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
@@ -71,7 +71,7 @@ export default function DatePicker({ value, onChange, className }: {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-12 z-50 w-72 rounded-lg border bg-gray-500 text-black p-3 shadow-lg">
+        <div className="absolute left-0 top-12 z-50 w-72 rounded-lg border bg-gray-500 text-black p-3 shadow-lg animate-entrance">
           <div className="mb-2 flex items-center justify-between">
             <button type="button" onClick={prevMonth} className="px-2 py-1 text-sm">◀</button>
             <div className="text-sm font-medium">{viewDate.toLocaleString(undefined,{month: 'long', year: 'numeric'})}</div>
