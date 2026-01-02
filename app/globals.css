@@ -21,11 +21,39 @@
 }
 
 body {
-  background: var(--bg);
+  /* Use a solid fallback color and position stacking context for background layers */
+  background-color: var(--bg);
   color: var(--fg);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  position: relative;
+  z-index: 0;
+}
+
+/* Background image rendered in a fixed pseudo-element so we can blur it without affecting UI */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url('/bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: blur(6px) brightness(0.95) saturate(0.95);
+  transform: scale(1.035);
+  z-index: -2;
+  pointer-events: none;
+}
+
+/* Subtle overlay (not blurred) to improve text contrast */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(rgba(11,18,32,0.04), rgba(11,18,32,0.04));
+  z-index: -1;
+  pointer-events: none;
 }
 
 /* Mobile container */

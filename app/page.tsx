@@ -43,7 +43,7 @@ export default function Home() {
   const weekTotal = (expenses || []).filter((e) => new Date(e.date) >= sevenDaysAgo).reduce((s, e) => s + e.amount, 0);
 
   return (
-    <div className="min-h-screen p-4 sm:p-8">
+    <div className="min-h-screen p-4 sm:p-8 ">
       <main className="app-container px-4">
         <header className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
