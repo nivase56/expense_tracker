@@ -89,7 +89,7 @@ export default function Home() {
                   <ExpenseForm onAdd={addExpense} initial={editing} onUpdate={updateExpense} onCancel={() => setEditing(null)} />
                 </div>
 
-                <div>
+                <div className="max-h-[50vh] overflow-auto sm:overflow-visible sm:max-h-none">
                   <ExpenseList expenses={expenses || []} onDelete={deleteExpense} onEdit={(e) => startEdit(e)} />
                 </div>
               </div>

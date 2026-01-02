@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import { FiArrowUpRight, FiArrowDownRight } from "react-icons/fi";
 import type { Expense } from "../types";
 import { Chart } from "primereact/chart";
 
@@ -45,10 +46,18 @@ export default function StatsAdvanced({ expenses }: { expenses: Expense[] }) {
     });
 
     const tThisWeek = expenses.filter((e) => new Date(e.date) >= thisWeekStart);
-    const tPrevWeek = expenses.filter((e) => new Date(e.date) >= prevWeekStart && new Date(e.date) < thisWeekStart);
+    const tPrevWeek = expenses.filter(
+      (e) =>
+        new Date(e.date) >= prevWeekStart && new Date(e.date) < thisWeekStart
+    );
 
-    const tThisMonth = expenses.filter((e) => new Date(e.date) >= thisMonthStart);
-    const tPrevMonth = expenses.filter((e) => new Date(e.date) >= prevMonthStart && new Date(e.date) < thisMonthStart);
+    const tThisMonth = expenses.filter(
+      (e) => new Date(e.date) >= thisMonthStart
+    );
+    const tPrevMonth = expenses.filter(
+      (e) =>
+        new Date(e.date) >= prevMonthStart && new Date(e.date) < thisMonthStart
+    );
 
     return {
       today: sum(tToday),
@@ -65,7 +74,11 @@ export default function StatsAdvanced({ expenses }: { expenses: Expense[] }) {
     return Math.round(((current - previous) / previous) * 100);
   }
 
-  const rupee = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 });
+  const rupee = new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 2,
+  });
 
   const dayPct = pctChange(totals.today, totals.yesterday);
   const weekPct = pctChange(totals.thisWeek, totals.prevWeek);
@@ -143,58 +156,186 @@ export default function StatsAdvanced({ expenses }: { expenses: Expense[] }) {
     animation: { duration: 500 },
   };
 
+  // build description repetition stats
+  const descStats = useMemo(() => {
+    const map = new Map<string, { count: number; total: number }>();
+    for (const e of expenses) {
+      const t = (e.description || "").trim();
+      if (!t) continue;
+      const cur = map.get(t) || { count: 0, total: 0 };
+      cur.count += 1;
+      cur.total += e.amount;
+      map.set(t, cur);
+    }
+    const arr = Array.from(map.entries()).map(([text, meta]) => ({
+      text,
+      ...meta,
+    }));
+    arr.sort((a, b) => b.count - a.count || b.total - a.total);
+    return arr.slice(0, 8);
+  }, [expenses]);
+
+  const descLabels = descStats.map((d) => d.text);
+  const descCounts = descStats.map((d) => d.count);
+  const descColors = descStats.map((_, i) =>
+    i % 2 === 0 ? "rgba(245,158,11,0.9)" : "rgba(245,158,11,0.6)"
+  );
+
+  const descData = {
+    labels: descLabels,
+    datasets: [
+      {
+        label: "Frequency",
+        data: descCounts,
+        backgroundColor: descColors,
+        borderRadius: 6,
+      },
+    ],
+  };
+
   const [openDay, setOpenDay] = useState(false);
   const [openWeek, setOpenWeek] = useState(false);
   const [openMonth, setOpenMonth] = useState(false);
 
+  function renderSparkline(prev: number, curr: number, color: string) {
+    const w = 64;
+    const h = 24;
+    const pad = 4;
+    const max = Math.max(prev, curr, 1);
+    const y = (v: number) => h - pad - (v / max) * (h - pad * 2);
+    const x0 = pad;
+    const x1 = w - pad;
+    const y0 = y(prev);
+    const y1 = y(curr);
+    const path = `M ${x0} ${y0} L ${x1} ${y1}`;
+    const area = `M ${x0} ${h - pad} L ${x0} ${y0} L ${x1} ${y1} L ${x1} ${
+      h - pad
+    } Z`;
+    return (
+      <svg
+        width={w}
+        height={h}
+        viewBox={`0 0 ${w} ${h}`}
+        preserveAspectRatio="none"
+        className="inline-block align-middle"
+      >
+        <path d={area} fill={color.replace("0.9", "0.12")} />
+        <path
+          d={path}
+          stroke={color}
+          strokeWidth={2}
+          fill="none"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+
+  function TrendButton({
+    title,
+    current,
+    previous,
+    pct,
+    open,
+    onClick,
+  }: {
+    title: string;
+    current: number;
+    previous: number;
+    pct: number;
+    open: boolean;
+    onClick: () => void;
+  }) {
+    const increased = pct > 0;
+    const color = increased ? "text-rose-500" : "text-emerald-600";
+    const Arrow = increased ? FiArrowUpRight : FiArrowDownRight;
+    return (
+      <button
+        onClick={onClick}
+        className="card p-3 text-center cursor-pointer hover:shadow-md flex-1"
+        aria-expanded={open}
+      >
+        <div className="text-sm flex justify-center gap-2">
+          {title}
+          <div
+            className={`${color} text-lg font-semibold flex items-center justify-center gap-1`}
+          >
+            {" "}
+            <Arrow />
+          </div>
+        </div>
+      </button>
+    );
+  }
+
   return (
     <div className="w-full">
       <div className="flex gap-3 mb-3">
-        <button
+        <TrendButton
+          title="Today"
+          current={totals.today}
+          previous={totals.yesterday}
+          pct={dayPct}
+          open={openDay}
           onClick={() => setOpenDay((v) => !v)}
-          className="card p-4 text-center cursor-pointer hover:shadow-md"
-          aria-expanded={openDay}
-        >
-          <div className="text-sm muted">Today</div>
-          <div className="mt-1 text-lg font-semibold">{rupee.format(totals.today)}</div>
-          <div className={`mt-1 text-sm ${dayPct >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>{dayPct}%</div>
-        </button>
-
-        <button
+        />
+        <TrendButton
+          title="Week"
+          current={totals.thisWeek}
+          previous={totals.prevWeek}
+          pct={weekPct}
+          open={openWeek}
           onClick={() => setOpenWeek((v) => !v)}
-          className="card p-4 text-center cursor-pointer hover:shadow-md"
-          aria-expanded={openWeek}
-        >
-          <div className="text-sm muted">Week</div>
-          <div className="mt-1 text-lg font-semibold">{rupee.format(totals.thisWeek)}</div>
-          <div className={`mt-1 text-sm ${weekPct >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>{weekPct}%</div>
-        </button>
-
-        <button
+        />
+        <TrendButton
+          title="Month"
+          current={totals.thisMonth}
+          previous={totals.prevMonth}
+          pct={monthPct}
+          open={openMonth}
           onClick={() => setOpenMonth((v) => !v)}
-          className="card p-4 text-center cursor-pointer hover:shadow-md"
-          aria-expanded={openMonth}
-        >
-          <div className="text-sm muted">Month</div>
-          <div className="mt-1 text-lg font-semibold">{rupee.format(totals.thisMonth)}</div>
-          <div className={`mt-1 text-sm ${monthPct >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>{monthPct}%</div>
-        </button>
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-3">
-        <CollapsiblePanel title="Day Comparison" open={openDay} onToggle={() => setOpenDay((v) => !v)}>
+        <CollapsiblePanel
+          title="Day Comparison"
+          open={openDay}
+          onToggle={() => setOpenDay((v) => !v)}
+        >
           <div style={{ height: 160 }} className="animate-entrance">
             <Chart type="line" data={barData} options={options} />
           </div>
         </CollapsiblePanel>
-        <CollapsiblePanel title="Week Comparison" open={openWeek} onToggle={() => setOpenWeek((v) => !v)}>
+        <CollapsiblePanel
+          title="Week Comparison"
+          open={openWeek}
+          onToggle={() => setOpenWeek((v) => !v)}
+        >
           <div style={{ height: 180 }} className="animate-entrance">
             <Chart type="line" data={weekData} options={options} />
           </div>
         </CollapsiblePanel>
-        <CollapsiblePanel title="Month Comparison" open={openMonth} onToggle={() => setOpenMonth((v) => !v)}>
+        <CollapsiblePanel
+          title="Month Comparison"
+          open={openMonth}
+          onToggle={() => setOpenMonth((v) => !v)}
+        >
           <div style={{ height: 200 }} className="animate-entrance">
             <Chart type="line" data={monthData} options={options} />
+          </div>
+        </CollapsiblePanel>
+        <CollapsiblePanel title="Most Frequent Descriptions">
+          <div style={{ height: 220 }} className="animate-entrance">
+            <Chart
+              type="bar"
+              data={descData}
+              options={{
+                indexAxis: "y",
+                plugins: { legend: { display: false } },
+                maintainAspectRatio: false,
+              }}
+            />
           </div>
         </CollapsiblePanel>
       </div>
@@ -233,18 +374,30 @@ function CollapsiblePanel({
         <div className="text-sm font-medium">{title}</div>
         <div className="text-sm muted">
           <svg
-            className={`transition-transform ${open ? "rotate-180" : "rotate-0"}`}
+            className={`transition-transform ${
+              open ? "rotate-180" : "rotate-0"
+            }`}
             width="18"
             height="18"
             viewBox="0 0 24 24"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
-            <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d="M6 9l6 6 6-6"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </div>
       </button>
-      <div className={`overflow-hidden transition-all ${open ? "max-h-[800px]" : "max-h-0"}`}>
+      <div
+        className={`overflow-hidden transition-all ${
+          open ? "max-h-[800px]" : "max-h-0"
+        }`}
+      >
         <div className="p-3 pt-0">{children}</div>
       </div>
     </div>

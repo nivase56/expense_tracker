@@ -41,7 +41,7 @@ export default function ExpenseList({
 
   const keys = Object.keys(groups).sort((a, b) => (a < b ? 1 : -1));
 
-  const [openDate, setOpenDate] = useState<string | null>(keys[0] || null);
+  const [openDate, setOpenDate] = useState<string | null>(null);
 
   return (
     <div className="mt-4 w-full list-container space-y-3">
