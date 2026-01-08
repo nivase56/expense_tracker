@@ -36,11 +36,28 @@ export default function Home() {
   const rupeeFmt = (v: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(v);
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfTomorrow = new Date(startOfToday);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
   const sevenDaysAgo = new Date(startOfToday);
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-   const monthTotal = (expenses || []).filter((e) => new Date(e.date) >= startOfMonth).reduce((s, e) => s + e.amount, 0);
-  const weekTotal = (expenses || []).filter((e) => new Date(e.date) >= sevenDaysAgo).reduce((s, e) => s + e.amount, 0);
+
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const todayTotal = (expenses || [])
+    .filter((e) => {
+      const d = new Date(e.date);
+      return d >= startOfToday && d < startOfTomorrow;
+    })
+    .reduce((s, e) => s + e.amount, 0);
+
+  const weekTotal = (expenses || [])
+    .filter((e) => new Date(e.date) >= sevenDaysAgo)
+    .reduce((s, e) => s + e.amount, 0);
+
+  const monthTotal = (expenses || [])
+    .filter((e) => new Date(e.date) >= startOfMonth)
+    .reduce((s, e) => s + e.amount, 0);
 
   return (
     <div className="min-h-screen p-4 sm:p-8 ">
@@ -67,16 +84,20 @@ export default function Home() {
             >
               Stats
             </button>
-            {/* mobile-visible totals */}
+            {/* quick totals */}
             <div className="flex gap-2 ml-2">
+              <div className="rounded-full bg-glass px-3 py-1 text-sm text-center">
+                <div className="small muted">Today</div>
+                <div className="font-semibold">{rupeeFmt(todayTotal)}</div>
+              </div>
               <div className="rounded-full bg-glass px-3 py-1 text-sm text-center">
                 <div className="small muted">Week</div>
                 <div className="font-semibold">{rupeeFmt(weekTotal)}</div>
               </div>
-                <div className="rounded-full bg-glass px-3 py-1 text-sm text-center">
-                  <div className="small muted">Month</div>
-                  <div className="font-semibold">{rupeeFmt(monthTotal)}</div>
-                </div>
+              <div className="rounded-full bg-glass px-3 py-1 text-sm text-center">
+                <div className="small muted">Month</div>
+                <div className="font-semibold">{rupeeFmt(monthTotal)}</div>
+              </div>
             </div>
           </nav>
         </header>
@@ -85,7 +106,7 @@ export default function Home() {
           <section>
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1">
-                <div className="card p-4 mb-4">
+                <div className="card p-4 mb-4 relative z-10">
                   <ExpenseForm onAdd={addExpense} initial={editing} onUpdate={updateExpense} onCancel={() => setEditing(null)} />
                 </div>
 

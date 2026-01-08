@@ -1,9 +1,12 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import { FiArrowUpRight, FiArrowDownRight } from "react-icons/fi";
-import type { Expense } from "../types";
+import React, { useMemo } from "react";
 import { Chart } from "primereact/chart";
+import type { Expense } from "../types";
+
+function pad(n: number) {
+  return n < 10 ? `0${n}` : `${n}`;
+}
 
 function dayStart(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -16,389 +19,413 @@ function weekStart(d: Date) {
   return dayStart(dt);
 }
 
-function monthStart(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), 1);
+function dateKey(d: Date) {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-function sum(list: Expense[]) {
-  return list.reduce((s, e) => s + e.amount, 0);
-}
+const rupee = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 2,
+});
 
 export default function StatsAdvanced({ expenses }: { expenses: Expense[] }) {
-  const now = new Date();
-  const todayStart = dayStart(now);
-  const yesterdayStart = new Date(todayStart);
-  yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+  if (!expenses || expenses.length === 0) {
+    return (
+      <div className="card p-4 text-sm">
+        <div className="font-medium mb-1">Stats will appear here</div>
+        <div className="muted">
+          Add a few expenses to see insights about where and when you
+          spend the most.
+        </div>
+      </div>
+    );
+  }
 
-  const thisWeekStart = weekStart(now);
-  const prevWeekStart = new Date(thisWeekStart);
-  prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+  const stats = useMemo(() => {
+    const byItem = new Map<string, number>();
+    const byDay = new Map<string, number>();
+    const byWeek = new Map<string, number>();
 
-  const thisMonthStart = monthStart(now);
-  const prevMonthStart = new Date(thisMonthStart);
-  prevMonthStart.setMonth(prevMonthStart.getMonth() - 1);
+    let total = 0;
 
-  const totals = useMemo(() => {
-    const tToday = expenses.filter((e) => new Date(e.date) >= todayStart);
-    const tYesterday = expenses.filter((e) => {
+    for (const e of expenses) {
+      const amount = e.amount || 0;
+      total += amount;
+
+      const label = (e.description || "Unlabeled").trim() || "Unlabeled";
+      byItem.set(label, (byItem.get(label) || 0) + amount);
+
       const d = new Date(e.date);
-      return d >= yesterdayStart && d < todayStart;
-    });
+      const dayK = dateKey(d);
+      byDay.set(dayK, (byDay.get(dayK) || 0) + amount);
 
-    const tThisWeek = expenses.filter((e) => new Date(e.date) >= thisWeekStart);
-    const tPrevWeek = expenses.filter(
-      (e) =>
-        new Date(e.date) >= prevWeekStart && new Date(e.date) < thisWeekStart
-    );
+      const wk = weekStart(d);
+      const wkKey = dateKey(wk);
+      byWeek.set(wkKey, (byWeek.get(wkKey) || 0) + amount);
+    }
 
-    const tThisMonth = expenses.filter(
-      (e) => new Date(e.date) >= thisMonthStart
-    );
-    const tPrevMonth = expenses.filter(
-      (e) =>
-        new Date(e.date) >= prevMonthStart && new Date(e.date) < thisMonthStart
-    );
+    const byItemArr = Array.from(byItem.entries())
+      .map(([label, total]) => ({ label, total }))
+      .sort((a, b) => b.total - a.total);
+
+    const byDayArrAll = Array.from(byDay.entries())
+      .map(([key, total]) => ({ key, total }))
+      .sort((a, b) => (a.key < b.key ? -1 : 1));
+
+    const byWeekArrAll = Array.from(byWeek.entries())
+      .map(([key, total]) => ({ key, total }))
+      .sort((a, b) => (a.key < b.key ? -1 : 1));
+
+    const topItem = byItemArr[0];
+
+    const topDay = byDayArrAll
+      .slice()
+      .sort((a, b) => b.total - a.total)[0];
+
+    const topWeek = byWeekArrAll
+      .slice()
+      .sort((a, b) => b.total - a.total)[0];
+
+    const byDayRecent = byDayArrAll.slice(-14);
+    const byWeekRecent = byWeekArrAll.slice(-8);
 
     return {
-      today: sum(tToday),
-      yesterday: sum(tYesterday),
-      thisWeek: sum(tThisWeek),
-      prevWeek: sum(tPrevWeek),
-      thisMonth: sum(tThisMonth),
-      prevMonth: sum(tPrevMonth),
+      total,
+      byItemArr,
+      byDayRecent,
+      byWeekRecent,
+      topItem,
+      topDay,
+      topWeek,
     };
   }, [expenses]);
 
-  function pctChange(current: number, previous: number) {
-    if (previous === 0) return current === 0 ? 0 : 100;
-    return Math.round(((current - previous) / previous) * 100);
-  }
+  const pieItemData = useMemo(() => {
+    const top = stats.byItemArr.slice(0, 5);
+    const othersTotal = stats.byItemArr
+      .slice(5)
+      .reduce((s, x) => s + x.total, 0);
 
-  const rupee = new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 2,
-  });
+    const labels = [...top.map((x) => x.label)];
+    const data = [...top.map((x) => x.total)];
 
-  const dayPct = pctChange(totals.today, totals.yesterday);
-  const weekPct = pctChange(totals.thisWeek, totals.prevWeek);
-  const monthPct = pctChange(totals.thisMonth, totals.prevMonth);
+    if (othersTotal > 0) {
+      labels.push("Other");
+      data.push(othersTotal);
+    }
 
-  const barData = {
-    labels: ["Yesterday", "Today"],
-    datasets: [
-      {
-        label: "Today vs Yesterday",
-        data: [totals.yesterday, totals.today],
-        borderColor: "#f59e0b",
-        backgroundColor: "rgba(245,158,11,0.14)",
-        fill: true,
-        tension: 0.4,
-        pointRadius: 3,
-        pointBackgroundColor: "#f59e0b",
-        borderWidth: 2,
-      },
-    ],
-  };
+    const colors = [
+      "#f97316",
+      "#fb923c",
+      "#fdba74",
+      "#34d399",
+      "#60a5fa",
+      "#a855f7",
+    ];
 
-  const weekData = {
-    labels: ["Prev Week", "This Week"],
-    datasets: [
-      {
-        label: "Prev Week",
-        data: [totals.prevWeek, totals.thisWeek],
-        borderColor: "#f97316",
-        backgroundColor: "rgba(249,115,22,0.12)",
-        fill: true,
-        tension: 0.36,
-        pointRadius: 3,
-        pointBackgroundColor: "#fb923c",
-        borderWidth: 2,
-      },
-    ],
-  };
+    return {
+      labels,
+      datasets: [
+        {
+          data,
+          backgroundColor: colors.slice(0, labels.length),
+          hoverBackgroundColor: colors.slice(0, labels.length),
+          borderWidth: 0,
+        },
+      ],
+    };
+  }, [stats.byItemArr]);
 
-  const monthData = {
-    labels: ["Prev Month", "This Month"],
-    datasets: [
-      {
-        label: "Prev Month",
-        data: [totals.prevMonth, totals.thisMonth],
-        borderColor: "#f59e0b",
-        backgroundColor: "rgba(245,158,11,0.1)",
-        fill: true,
-        tension: 0.4,
-        pointRadius: 3,
-        pointBackgroundColor: "#f59e0b",
-        borderWidth: 2,
-      },
-    ],
-  };
+  const topItemsBarData = useMemo(() => {
+    const items = stats.byItemArr.slice(0, 7);
+    return {
+      labels: items.map((x) => x.label),
+      datasets: [
+        {
+          data: items.map((x) => x.total),
+          backgroundColor: "rgba(249,115,22,0.8)",
+          borderRadius: 8,
+        },
+      ],
+    };
+  }, [stats.byItemArr]);
 
-  const options = {
+  const dayBarData = useMemo(() => {
+    const labels = stats.byDayRecent.map((d) => {
+      const [year, month, day] = d.key.split("-").map((x) => Number(x));
+      const dt = new Date(year, month - 1, day);
+      return dt.toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      });
+    });
+
+    const values = stats.byDayRecent.map((d) => d.total);
+
+    // Simple centered moving average to draw a smooth trend line
+    const trend = values.map((_, idx, arr) => {
+      let sum = 0;
+      let count = 0;
+      for (let i = idx - 2; i <= idx + 2; i++) {
+        if (i >= 0 && i < arr.length) {
+          sum += arr[i];
+          count++;
+        }
+      }
+      return count ? sum / count : 0;
+    });
+
+    return {
+      labels,
+      datasets: [
+        {
+          type: "bar" as const,
+          label: "Amount",
+          data: values,
+          backgroundColor: "rgba(59,130,246,0.7)",
+          borderRadius: 4,
+        },
+        {
+          type: "line" as const,
+          label: "Trend",
+          data: trend,
+          borderColor: "#f97316",
+          backgroundColor: "rgba(249,115,22,0.15)",
+          tension: 0.35,
+          pointRadius: 2,
+          pointBackgroundColor: "#f97316",
+          borderWidth: 2,
+        },
+      ],
+    };
+  }, [stats.byDayRecent]);
+
+  const weekBarData = useMemo(() => {
+    const labels = stats.byWeekRecent.map((w) => {
+      const [year, month, day] = w.key.split("-").map((x) => Number(x));
+      const start = new Date(year, month - 1, day);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      const startLabel = start.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+      });
+      const endLabel = end.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+      });
+      return `${startLabel} - ${endLabel}`;
+    });
+
+    const data = stats.byWeekRecent.map((w) => w.total);
+
+    return {
+      labels,
+      datasets: [
+        {
+          data,
+          backgroundColor: "rgba(16,185,129,0.75)",
+          borderRadius: 4,
+        },
+      ],
+    };
+  }, [stats.byWeekRecent]);
+
+  const pieOptions = {
     plugins: {
-      legend: { display: false },
-      tooltip: { mode: "index", intersect: false },
-    },
-    elements: {
-      line: { borderCapStyle: "round" },
-      point: { hoverRadius: 6 },
-    },
-    interaction: { mode: "nearest", axis: "x", intersect: false },
-    scales: {
-      x: { grid: { display: false }, ticks: { display: true } },
-      y: {
-        grid: { color: "rgba(15,23,42,0.04)" },
-        ticks: { callback: (value: any) => rupee.format(Number(value)) },
+      legend: {
+        position: "bottom" as const,
+        labels: {
+          usePointStyle: true,
+        },
+      },
+      tooltip: {
+        callbacks: {
+          label: (ctx: any) => {
+            const value = ctx.raw as number;
+            const label = ctx.label as string;
+            return `${label}: ${rupee.format(value)}`;
+          },
+        },
       },
     },
+    cutout: "60%",
     maintainAspectRatio: false,
     animation: { duration: 500 },
   };
 
-  // build description repetition stats
-  const descStats = useMemo(() => {
-    const map = new Map<string, { count: number; total: number }>();
-    for (const e of expenses) {
-      const t = (e.description || "").trim();
-      if (!t) continue;
-      const cur = map.get(t) || { count: 0, total: 0 };
-      cur.count += 1;
-      cur.total += e.amount;
-      map.set(t, cur);
-    }
-    const arr = Array.from(map.entries()).map(([text, meta]) => ({
-      text,
-      ...meta,
-    }));
-    arr.sort((a, b) => b.count - a.count || b.total - a.total);
-    return arr.slice(0, 8);
-  }, [expenses]);
-
-  const descLabels = descStats.map((d) => d.text);
-  const descCounts = descStats.map((d) => d.count);
-  const descColors = descStats.map((_, i) =>
-    i % 2 === 0 ? "rgba(245,158,11,0.9)" : "rgba(245,158,11,0.6)"
-  );
-
-  const descData = {
-    labels: descLabels,
-    datasets: [
-      {
-        label: "Frequency",
-        data: descCounts,
-        backgroundColor: descColors,
-        borderRadius: 6,
+  const horizontalBarOptions = {
+    indexAxis: "y" as const,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx: any) => rupee.format(Number(ctx.raw ?? 0)),
+        },
       },
-    ],
+    },
+    scales: {
+      x: {
+        grid: { color: "rgba(15,23,42,0.06)" },
+        ticks: {
+          callback: (value: any) => rupee.format(Number(value)),
+        },
+      },
+      y: {
+        grid: { display: false },
+      },
+    },
+    maintainAspectRatio: false,
   };
 
-  const [openDay, setOpenDay] = useState(false);
-  const [openWeek, setOpenWeek] = useState(false);
-  const [openMonth, setOpenMonth] = useState(false);
+  const dayBarOptions = {
+    plugins: {
+      legend: { display: true },
+      tooltip: {
+        callbacks: {
+          label: (ctx: any) => rupee.format(Number(ctx.raw ?? 0)),
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+      },
+      y: {
+        grid: { color: "rgba(15,23,42,0.06)" },
+        ticks: {
+          callback: (value: any) => rupee.format(Number(value)),
+        },
+      },
+    },
+    maintainAspectRatio: false,
+  };
 
-  function renderSparkline(prev: number, curr: number, color: string) {
-    const w = 64;
-    const h = 24;
-    const pad = 4;
-    const max = Math.max(prev, curr, 1);
-    const y = (v: number) => h - pad - (v / max) * (h - pad * 2);
-    const x0 = pad;
-    const x1 = w - pad;
-    const y0 = y(prev);
-    const y1 = y(curr);
-    const path = `M ${x0} ${y0} L ${x1} ${y1}`;
-    const area = `M ${x0} ${h - pad} L ${x0} ${y0} L ${x1} ${y1} L ${x1} ${
-      h - pad
-    } Z`;
-    return (
-      <svg
-        width={w}
-        height={h}
-        viewBox={`0 0 ${w} ${h}`}
-        preserveAspectRatio="none"
-        className="inline-block align-middle"
-      >
-        <path d={area} fill={color.replace("0.9", "0.12")} />
-        <path
-          d={path}
-          stroke={color}
-          strokeWidth={2}
-          fill="none"
-          strokeLinecap="round"
-        />
-      </svg>
-    );
-  }
+  const weekBarOptions = {
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx: any) => rupee.format(Number(ctx.raw ?? 0)),
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+      },
+      y: {
+        grid: { color: "rgba(15,23,42,0.06)" },
+        ticks: {
+          callback: (value: any) => rupee.format(Number(value)),
+        },
+      },
+    },
+    maintainAspectRatio: false,
+  };
 
-  function TrendButton({
-    title,
-    current,
-    previous,
-    pct,
-    open,
-    onClick,
-  }: {
-    title: string;
-    current: number;
-    previous: number;
-    pct: number;
-    open: boolean;
-    onClick: () => void;
-  }) {
-    const increased = pct > 0;
-    const color = increased ? "text-rose-500" : "text-emerald-600";
-    const Arrow = increased ? FiArrowUpRight : FiArrowDownRight;
-    return (
-      <button
-        onClick={onClick}
-        className="card p-3 text-center cursor-pointer hover:shadow-md flex-1"
-        aria-expanded={open}
-      >
-        <div className="text-sm flex justify-center gap-2">
-          {title}
-          <div
-            className={`${color} text-lg font-semibold flex items-center justify-center gap-1`}
-          >
-            {" "}
-            <Arrow />
-          </div>
-        </div>
-      </button>
-    );
-  }
+  const topDayLabel = stats.topDay
+    ? (() => {
+        const [year, month, day] = stats.topDay.key
+          .split("-")
+          .map((x) => Number(x));
+        const dt = new Date(year, month - 1, day);
+        return dt.toLocaleDateString(undefined, {
+          weekday: "long",
+          month: "short",
+          day: "numeric",
+        });
+      })()
+    : "-";
+
+  const topWeekLabel = stats.topWeek
+    ? (() => {
+        const [year, month, day] = stats.topWeek.key
+          .split("-")
+          .map((x) => Number(x));
+        const start = new Date(year, month - 1, day);
+        const end = new Date(start);
+        end.setDate(end.getDate() + 6);
+        const s = start.toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+        });
+        const e = end.toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+        });
+        return `${s} - ${e}`;
+      })()
+    : "-";
 
   return (
-    <div className="w-full">
-      <div className="flex gap-3 mb-3">
-        <TrendButton
-          title="Today"
-          current={totals.today}
-          previous={totals.yesterday}
-          pct={dayPct}
-          open={openDay}
-          onClick={() => setOpenDay((v) => !v)}
-        />
-        <TrendButton
-          title="Week"
-          current={totals.thisWeek}
-          previous={totals.prevWeek}
-          pct={weekPct}
-          open={openWeek}
-          onClick={() => setOpenWeek((v) => !v)}
-        />
-        <TrendButton
-          title="Month"
-          current={totals.thisMonth}
-          previous={totals.prevMonth}
-          pct={monthPct}
-          open={openMonth}
-          onClick={() => setOpenMonth((v) => !v)}
-        />
+    <div className="w-full space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="card p-3">
+          <div className="small muted mb-1">Top item</div>
+          <div className="text-sm font-semibold">
+            {stats.topItem ? stats.topItem.label : "-"}
+          </div>
+          <div className="text-xs muted mt-1">
+            {stats.topItem
+              ? rupee.format(stats.topItem.total)
+              : "No data yet"}
+          </div>
+        </div>
+        <div className="card p-3">
+          <div className="small muted mb-1">Highest spend day</div>
+          <div className="text-sm font-semibold">{topDayLabel}</div>
+          <div className="text-xs muted mt-1">
+            {stats.topDay
+              ? rupee.format(stats.topDay.total)
+              : "No data yet"}
+          </div>
+        </div>
+        <div className="card p-3">
+          <div className="small muted mb-1">Highest spend week</div>
+          <div className="text-sm font-semibold">{topWeekLabel}</div>
+          <div className="text-xs muted mt-1">
+            {stats.topWeek
+              ? rupee.format(stats.topWeek.total)
+              : "No data yet"}
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3">
-        <CollapsiblePanel
-          title="Day Comparison"
-          open={openDay}
-          onToggle={() => setOpenDay((v) => !v)}
-        >
-          <div style={{ height: 160 }} className="animate-entrance">
-            <Chart type="line" data={barData} options={options} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="card p-3">
+          <div className="text-sm font-medium mb-2">Spending by item</div>
+          <div style={{ height: 260 }} className="animate-entrance">
+            <Chart type="doughnut" data={pieItemData} options={pieOptions} />
           </div>
-        </CollapsiblePanel>
-        <CollapsiblePanel
-          title="Week Comparison"
-          open={openWeek}
-          onToggle={() => setOpenWeek((v) => !v)}
-        >
-          <div style={{ height: 180 }} className="animate-entrance">
-            <Chart type="line" data={weekData} options={options} />
-          </div>
-        </CollapsiblePanel>
-        <CollapsiblePanel
-          title="Month Comparison"
-          open={openMonth}
-          onToggle={() => setOpenMonth((v) => !v)}
-        >
-          <div style={{ height: 200 }} className="animate-entrance">
-            <Chart type="line" data={monthData} options={options} />
-          </div>
-        </CollapsiblePanel>
-        <CollapsiblePanel title="Most Frequent Descriptions">
-          <div style={{ height: 220 }} className="animate-entrance">
+        </div>
+        <div className="card p-3">
+          <div className="text-sm font-medium mb-2">Top items (amount)</div>
+          <div style={{ height: 260 }} className="animate-entrance">
             <Chart
               type="bar"
-              data={descData}
-              options={{
-                indexAxis: "y",
-                plugins: { legend: { display: false } },
-                maintainAspectRatio: false,
-              }}
+              data={topItemsBarData}
+              options={horizontalBarOptions}
             />
           </div>
-        </CollapsiblePanel>
-      </div>
-    </div>
-  );
-}
-
-function CollapsiblePanel({
-  title,
-  children,
-  open: controlledOpen,
-  onToggle,
-}: {
-  title: string;
-  children: React.ReactNode;
-  open?: boolean;
-  onToggle?: () => void;
-}) {
-  const [internalOpen, setInternalOpen] = useState(false);
-  const isControlled = controlledOpen !== undefined;
-  const open = isControlled ? Boolean(controlledOpen) : internalOpen;
-
-  function toggle() {
-    if (onToggle) onToggle();
-    if (!isControlled) setInternalOpen((v) => !v);
-  }
-
-  return (
-    <div className="card p-2">
-      <button
-        type="button"
-        onClick={toggle}
-        className="w-full flex items-center justify-between px-3 py-2"
-        aria-expanded={open}
-      >
-        <div className="text-sm font-medium">{title}</div>
-        <div className="text-sm muted">
-          <svg
-            className={`transition-transform ${
-              open ? "rotate-180" : "rotate-0"
-            }`}
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M6 9l6 6 6-6"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
         </div>
-      </button>
-      <div
-        className={`overflow-hidden transition-all ${
-          open ? "max-h-[800px]" : "max-h-0"
-        }`}
-      >
-        <div className="p-3 pt-0">{children}</div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="card p-3">
+          <div className="text-sm font-medium mb-2">Last 14 days</div>
+          <div style={{ height: 260 }} className="animate-entrance">
+            <Chart type="bar" data={dayBarData} options={dayBarOptions} />
+          </div>
+        </div>
+        <div className="card p-3">
+          <div className="text-sm font-medium mb-2">Last 8 weeks</div>
+          <div style={{ height: 260 }} className="animate-entrance">
+            <Chart type="bar" data={weekBarData} options={weekBarOptions} />
+          </div>
+        </div>
       </div>
     </div>
   );
